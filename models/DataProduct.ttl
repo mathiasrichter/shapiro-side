@@ -1,0 +1,187 @@
+# inspired by the discussion at https://github.com/w3c/dxwg/issues/1240
+
+@prefix dtp:            <http://example.org/DataProduct/> .
+@prefix rdf:            <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:           <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:            <http://www.w3.org/2002/07/owl#> .
+@prefix sh:             <http://www.w3.org/ns/shacl#> .
+@prefix xsd:            <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:           <http://www.w3.org/2004/02/skos/core#> .
+@prefix dct:            <http://purl.org/dc/terms/> .
+@prefix dcat:           <http://www.w3.org/ns/dcat#> .
+@prefix time:           <https://www.w3.org/TR/owl-time/#> .
+
+dtp:DataProduct
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dcat:DataService ; 
+    rdfs:label          "DataProduct"@en ;
+    dct:description     "A data product consumes one or more datasets from its input port(s), performs computations, calculations, transformations on these input(s) and offers the resulting dataset(s) on its output port(s)."@en ;
+    rdfs:comment        "A data product consumes one or more datasets from its input port(s), performs computations, calculations, transformations on these input(s) and offers the resulting dataset(s) on its output port(s)."@en ;
+    skos:definition     "A data product consumes one or more datasets from its input port(s), performs computations, calculations, transformations on these input(s) and offers the resulting dataset(s) on its output port(s)."@en ;
+.        
+
+dtp:InputPort
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dcat:DataService ;
+    rdfs:label          "InputPort"@en ;
+    dct:description     "An input port of a data product is a data service that delivers a dataset into a data product using a specific delivery mechanism (file, API, database query, manual upload, stream, etc.)."@en ;
+    rdfs:comment        "An input port of a data product is a data service that delivers a dataset into a data product using a specific delivery mechanism (file, API, database query, manual upload, stream, etc.)."@en ;
+    skos:definition     "An input port of a data product is a data service that delivers a dataset into a data product using a specific delivery mechanism (file, API, database query, manual upload, stream, etc.)."@en ;
+.
+
+dtp:ApiInputPort
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dtp:InputPort ;
+    rdfs:label          "ApiInputPort"@en ;
+    dct:description     "An input port consuming data from an API call."@en ;
+    rdfs:comment        "An input port consuming data from an API call."@en ;
+    skos:definition     "An input port consuming data from an API call."@en ;
+.
+
+dtp:FileInputPort
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dtp:InputPort ;
+    rdfs:label          "FileInputPort"@en ;
+    dct:description     "An input port consuming data from a file."@en ;
+    rdfs:comment        "An input port consuming data from a file."@en ;
+    skos:definition     "An input port consuming data from a file."@en ;
+.
+
+dtp:SomePort
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dtp:FileInputPort ;
+.
+
+dtp:OutputPort
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dcat:DataService ;
+    rdfs:label          "OutputPort"@en ;
+    dct:description     "An output port of a data product is a data service that delivers a dataset produced by the data product using a specific delivery mechanism (file, API, database query, manual download, stream, etc.)."@en ;
+    rdfs:comment        "An output port of a data product is a data service that delivers a dataset produced by the data product using a specific delivery mechanism (file, API, database query, manual download, stream, etc.)."@en ;
+    skos:definition     "An output port of a data product is a data service that delivers a dataset produced by the data product using a specific delivery mechanism (file, API, database query, manual download, stream, etc.)."@en ;
+.
+
+dtp:Dataset
+    rdf:type            rdfs:Class ;
+    rdfs:subClassOf     dcat:Dataset ;
+    rdfs:label          "Dataset"@en ;
+    dct:description     "A collection of data consumed by a data product on an input port, stored by a data product as internal representation, or offered by a data product on an output port."@en ;
+    rdfs:comment        "A collection of data consumed by a data product on an input port, stored by a data product as internal representation, or offered by a data product on an output port."@en ;
+    skos:definition     "A collection of data consumed by a data product on an input port, stored by a data product as internal representation, or offered by a data product on an output port."@en ;
+.
+
+dtp:hasInputPort
+    rdf:type            rdfs:Property ;
+    rdfs:domain         dtp:DataProduct ;
+    rdfs:range          dtp:InputPort ;
+    rdfs:label          "hasInputPort"@en ;
+    dct:description     "An input port that a data product uses to consume data to produce an outcome."@en ;
+    rdfs:comment        "An input port that a data product uses to consume data to produce an outcome."@en ;
+    skos:definition     "An input port that a data product uses to consume data to produce an outcome."@en ;
+.
+
+dtp:hasOutputPort
+    rdf:type            rdfs:Property ;
+    rdfs:domain         dtp:DataProduct ;
+    rdfs:range          dtp:OutputPort ;
+    rdfs:label          "hasOutputPort"@en ;
+    dct:description     "An output port that a data product uses to offer the dataset(s) it has produced."@en ;
+    rdfs:comment        "An output port that a data product uses to offer the dataset(s) it has produced."@en ;
+    skos:definition     "An output port that a data product uses to offer the dataset(s) it has produced."@en ;
+.
+
+dtp:hasDataModel
+    rdf:type            rdfs:Property ;
+    rdfs:domain         dtp:Dataset ;
+    rdfs:range          rdfs:Resource ;
+    rdfs:label          "hasDataModel"@en ;
+    dct:description     "The IRI of the semantic model (a.k.a. context in linked data terms) describing structure, meaning and validation constraints of the dataset."@en ;
+    rdfs:comment        "The IRI of the semantic model (a.k.a. context in linked data terms) describing structure, meaning and validation constraints of the dataset."@en ;
+    skos:definition     "The IRI of the semantic model (a.k.a. context in linked data terms) describing structure, meaning and validation constraints of the dataset."@en ;
+.
+
+dtp:namePattern
+    rdf:type            rdfs:Property ;
+    rdfs:domain         dtp:FileInputPort ;
+    rdfs:range          xsd:string ;
+    rdfs:label          "namePattern"@en ;
+    dct:description     "The regex pattern specifying the name of a resource, e.g. a file."@en ;
+    rdfs:comment        "The regex pattern specifying the name of a resource, e.g. a file."@en ;
+    skos:definition     "The regex pattern specifying the name of a resource, e.g. a file."@en ;
+.
+
+dtp:schedule
+    rdf:type            rdfs:Property ;
+    rdfs:domain         dtp:InputPort, dtp:OutputPort ;
+    rdfs:range          time:GeneralDateTimeDescription ;
+    rdfs:label          "schedule"@en ;
+    dct:description     "The date/time description of the schedule of an activity (e.g. making an API call or polling for a file). If the datetime description is not pointing to an unambiguous, absolute point in time (e.g. a day of the week and a time, but no date, or just a specification of minutes or seconds) then the schedule is repeating, e.g. perform action every n hours/minutes/seconds or every day at the specific time."@en ;
+    rdfs:comment        "The date/time description of the schedule of an activity (e.g. making an API call or polling for a file). If the datetime description is not pointing to an unambiguous, absolute point in time (e.g. a day of the week and a time, but no date, or just a specification of minutes or seconds) then the schedule is repeating, e.g. perform action every n hours/minutes/seconds or every day at the specific time."@en ;
+    skos:definition     "The date/time description of the schedule of an activity (e.g. making an API call or polling for a file). If the datetime description is not pointing to an unambiguous, absolute point in time (e.g. a day of the week and a time, but no date, or just a specification of minutes or seconds) then the schedule is repeating, e.g. perform action every n hours/minutes/seconds or every day at the specific time."@en ;
+.
+
+dtp:format
+    rdf:type            rdfs:Property ;
+    rdfs:domain         dtp:InputPort, dtp:OutputPort ;
+    rdfs:range          dtp:DataFormat ;
+    rdfs:label          "format"@en ;
+    dct:description     "The format of the data consumed resp. produced by an input/output port."@en ;
+    rdfs:comment        "The format of the data consumed resp. produced by an input/output port."@en ;
+    skos:definition     "The format of the data consumed resp. produced by an input/output port."@en ;
+.
+
+dtp:DataFormat
+    rdf:type            rdfs:Class ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "Describes the format of data, e.g. in a file or returned from an API call."@en ;
+    rdfs:comment        "Describes the format of data, e.g. in a file or returned from an API call."@en ;
+    skos:definition     "Describes the format of data, e.g. in a file or returned from an API call."@en ;
+.
+
+dtp:CSV
+    rdf:type            dtp:DataFormat ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "The CSV (comma-separated value) data format."@en ;
+    rdfs:comment        "The CSV (comma-separated value) data format."@en ;
+    skos:definition     "The CSV (comma-separated value) data format."@en ;
+.
+
+dtp:JSONLD
+    rdf:type            dtp:DataFormat ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "The JSON-LD (JSON linked data) format."@en ;
+    rdfs:comment        "The JSON-LD (JSON linked data) format."@en ;
+    skos:definition     "The JSON-LD (JSON linked data) format."@en ;
+.
+
+dtp:XML
+    rdf:type            dtp:DataFormat ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "The XML data format."@en ;
+    rdfs:comment        "The XML data format."@en ;
+    skos:definition     "The XML data format."@en ;
+.
+
+dtp:JSON
+    rdf:type            dtp:DataFormat ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "The JSON data format."@en ;
+    rdfs:comment        "The JSON data format."@en ;
+    skos:definition     "The JSON data format."@en ;
+.
+
+dtp:YAML
+    rdf:type            dtp:DataFormat ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "The YAML data format."@en ;
+    rdfs:comment        "The YAML data format."@en ;
+    skos:definition     "The YAML data format."@en ;
+.
+
+dtp:TURTLE
+    rdf:type            dtp:DataFormat ;
+    rdfs:label          "DataFormat"@en ;
+    dct:description     "The Turtle serialization format."@en ;
+    rdfs:comment        "The Turtle serialization format."@en ;
+    skos:definition     "The Turtle serialization format."@en ;
+.

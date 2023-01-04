@@ -1,0 +1,89 @@
+@prefix :        <http://example.org/HelloDataProduct/> .
+@prefix dtp:        <http://example.org/DataProduct/> .
+@prefix xsd:      <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:      <http://www.w3.org/2004/02/skos/core#> .
+@prefix dct:      <http://purl.org/dc/terms/> .
+@prefix dcat:      <http://www.w3.org/ns/dcat#> .
+@prefix rdf:      <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh:       <http://www.w3.org/ns/shacl#> .
+@prefix time:      <https://www.w3.org/TR/owl-time/#> .
+
+:GreetingDataset a dtp:Dataset ;
+  rdfs:label     "GreetingDataset"@en ;
+  rdfs:comment    "Dataset representing the proverbial 'Hello <name>'."@en ;
+  skos:definition   "Dataset representing the proverbial 'Hello <name>'."@en ;
+  dct:description   "Dataset representing the proverbial 'Hello <name>'."@en ;
+  dtp:hasDataModel  :Greeting ;
+.
+
+:Greeting a rdfs:Class, sh:NodeShape ;
+  rdfs:label     "Greeting"@en ;
+  rdfs:comment    "A model for a greeting used to greet a person."@en ;
+  skos:definition   "A model for a greeting used to greet a person."@en ;
+  dct:description   "A model for a greeting used to greet a person."@en ;
+  sh:Property     [
+    sh:path     :FirstName ;
+    sh:minCount   1 ;
+    sh:type     xsd:string ;
+    sh:minLength  1 ;
+  ] ;
+  sh:Property     [
+    sh:path     :LastName ;
+    sh:minCount   1 ;
+    sh:maxCount   1 ;
+    sh:type     xsd:string ;
+    sh:minLength  1 ;
+  ] ;
+.
+
+:FirstName a rdfs:Property ;
+  rdfs:domain     :Greeting ;
+  rdfs:range     xsd:string ;
+  rdfs:label     "FirstName"@en ;
+  rdfs:comment    "First name used in a greeting."@en ;
+  skos:definition   "First name used in a greeting."@en ;
+  dct:description   "First name used in a greeting."@en ;
+.
+
+:LastName a rdfs:Property ;
+  rdfs:domain     :Greeting ;
+  rdfs:range     xsd:string ;
+  rdfs:label     "LastName"@en ;
+  rdfs:comment    "Last name used in a greeting."@en ;
+  skos:definition   "Last name used in a greeting."@en ;
+  dct:description   "Last name used in a greeting."@en ;
+.
+
+:HelloDataProduct a dtp:DataProduct ;
+  rdfs:label     "HelloDataProduct"@en ;
+  rdfs:comment    "This data product consumes a file with first names a file with last names, joins the first and last names by their id and produces a set of greetings to the joined names."@en ;
+  skos:definition   "This data product consumes a file with first names a file with last names, joins the first and last names by their id and produces a set of greetings to the joined names."@en ;
+  dct:description   "This data product consumes a file with first names a file with last names, joins the first and last names by their id and produces a set of greetings to the joined names."@en ;
+  dcat:servesDataset :GreetingDataset ; # meaning this data product stores this dataset as part of its internal state
+  dtp:hasInputPort  :FirstNamesInput, :LastNamesInput, :MiddleNamesInput;
+.
+
+:FirstNamesInput a dtp:FileInputPort ;
+  dcat:endpointURL  "file:///Users/mrichter/shapiro-side/test/" ; # where to look for the file
+  dtp:namePattern  "FIRST\\_NAMES\\_[0..9]+\\.[Cc][Ss][Vv]" ; # what filename to look for
+  dtp:schedule    [
+    a time:GeneralDateTimeDescription ;
+      time:unitType  time:unitMinute ;
+      time:minutes  2;
+  ] ; # check every 2 minutes
+  dtp:format     dtp:CSV ; # the file contains CSV data
+.
+
+:MiddleNamesInput a dtp:SomePort .
+
+:LastNamesInput a dtp:FileInputPort ;
+  dcat:endpointURL  "file:///Users/mrichter/shapiro-side/test/" ; # where to look for the file
+  dtp:namePattern  "LAST\\_NAMES\\_[0..9]+\\.[Cc][Ss][Vv]" ; # what filename to look for
+  dtp:schedule    [
+    a time:GeneralDateTimeDescription ;
+      time:unitType  time:unitMinute ;
+      time:minutes  2;
+  ] ; # check every 2 minutes
+  dtp:format     dtp:CSV ; # the file contains CSV data
+.
