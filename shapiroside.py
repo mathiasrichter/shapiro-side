@@ -12,44 +12,57 @@ class Sidecar(ABC):
     by interpreting the specified description (available the data IRI) in the context of the
     semantic model (available at the model IRI). 
     This class assumes a model as described at ./models/DataProduct.ttl"""
-    
-    INPUT_PORT_QUERY = prepareQuery("""
-            PREFIX dtp: <http://example.org/DataProduct/> 
-            SELECT DISTINCT ?inputPort
-            WHERE { 
-                ?inputPortClass rdfs:subClassOf* dtp:InputPort. 
-                ?inputPort rdf:type ?inputPortClass. 
-            }
-        """)
-    
-    OUTPUT_PORT_QUERY = prepareQuery("""
-            PREFIX dtp: <http://example.org/DataProduct/>
-            SELECT DISTINCT ?outputPort
-            WHERE { 
-                ?outputPortClass rdfs:subClassOf* dtp:OutputPort. 
-                ?outputPort rdf:type ?outputPortClass. 
-            }
-        """)
-    
-    FILE_INPUT_PORT_QUERY = prepareQuery("""
-            PREFIX dtp: <http://example.org/DataProduct/>
-            SELECT DISTINCT ?inputPort
-            WHERE { 
-                ?inputPort rdf:type dtp:FileInputPort. 
-            }
-        """)                                         
-    
+     
     def __init__(self, model_iri:str, data_iri:str):
         """Initialize this sidecar.
 
         Args:
-            model_iri (_type_): An IRI pointing to a semantic model defining the format that the data graph must have.
-            data_iri (_type_): An II pointing to the actual description of a data product in compliance with the model.
+            model_iri (str): An IRI pointing to a semantic model defining the format that the data graph must have.
+            data_iri (str): An II pointing to the actual description of a data product in compliance with the model.
+            The model needs to define the description for data products in a namespace ending with "/DataProduct/" or "/DataProduct#".
         """
         self.model_iri = model_iri
         self.data_iri = data_iri
         self.graph = Graph().parse(model_iri)
         self.graph.parse(self.data_iri) # merge all into the same graph
+        dptNamespace = None
+        for n in self.graph.namespace_manager.namespaces():
+            ns = str(n[1])
+            if ns.endswith("/DataProduct/") or ns.endswith("/DataProduct#"):
+                dptNamespace = ns
+        if dptNamespace is None:
+            raise Exception("Could not identify namespace of model for DataProduct.")
+        self.prepare_queries(dptNamespace)               
+        
+    def prepare_queries(self, dataProductNamespace:str):
+        """Prepare all SPARQL queries needed to interpret the dataproduct description.
+        
+        Args:
+            dataProductNamespace (str): The namespace within which the model of the dataproduct description is defined.
+        """
+        self.INPUT_PORT_QUERY = prepareQuery("""
+                PREFIX dtp: <""" + dataProductNamespace + """> 
+                SELECT DISTINCT ?inputPort
+                WHERE { 
+                    ?inputPortClass rdfs:subClassOf* dtp:InputPort. 
+                    ?inputPort rdf:type ?inputPortClass. 
+                }
+            """)        
+        self.OUTPUT_PORT_QUERY = prepareQuery("""
+                PREFIX dtp: <""" + dataProductNamespace + """> 
+                SELECT DISTINCT ?outputPort
+                WHERE { 
+                    ?outputPortClass rdfs:subClassOf* dtp:OutputPort. 
+                    ?outputPort rdf:type ?outputPortClass. 
+                }
+            """)       
+        self.FILE_INPUT_PORT_QUERY = prepareQuery("""
+                PREFIX dtp: <""" + dataProductNamespace + """> 
+                SELECT DISTINCT ?inputPort
+                WHERE { 
+                    ?inputPort rdf:type dtp:FileInputPort. 
+                }
+            """)                                      
         
     def get_instances_of(self, class_iri:str):
         pass

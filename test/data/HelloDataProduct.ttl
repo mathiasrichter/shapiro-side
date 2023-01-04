@@ -61,7 +61,7 @@
   skos:definition   "This data product consumes a file with first names a file with last names, joins the first and last names by their id and produces a set of greetings to the joined names."@en ;
   dct:description   "This data product consumes a file with first names a file with last names, joins the first and last names by their id and produces a set of greetings to the joined names."@en ;
   dcat:servesDataset :GreetingDataset ; # meaning this data product stores this dataset as part of its internal state
-  dtp:hasInputPort  :FirstNamesInput, :LastNamesInput, :MiddleNamesInput;
+  dtp:hasInputPort  :FirstNamesInput, :LastNamesInput ;
 .
 
 :FirstNamesInput a dtp:FileInputPort ;
@@ -74,8 +74,6 @@
   ] ; # check every 2 minutes
   dtp:format     dtp:CSV ; # the file contains CSV data
 .
-
-:MiddleNamesInput a dtp:SomePort .
 
 :LastNamesInput a dtp:FileInputPort ;
   dcat:endpointURL  "file:///Users/mrichter/shapiro-side/test/" ; # where to look for the file
