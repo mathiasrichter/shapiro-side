@@ -47,11 +47,6 @@ dtp:FileInputPort
     skos:definition     "An input port consuming data from a file."@en ;
 .
 
-dtp:SomePort
-    rdf:type            rdfs:Class ;
-    rdfs:subClassOf     dtp:FileInputPort ;
-.
-
 dtp:OutputPort
     rdf:type            rdfs:Class ;
     rdfs:subClassOf     dcat:DataService ;

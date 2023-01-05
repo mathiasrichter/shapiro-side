@@ -1,5 +1,6 @@
 from rdflib import Graph
 from rdflib.plugins.sparql import prepareQuery
+from rdflib import URIRef
 from abc import ABC, abstractmethod
 from pyspark.sql import SparkSession
 
@@ -32,7 +33,7 @@ class Sidecar(ABC):
                 dptNamespace = ns
         if dptNamespace is None:
             raise Exception("Could not identify namespace of model for DataProduct.")
-        self.prepare_queries(dptNamespace)               
+        self.prepare_queries(dptNamespace)         
         
     def prepare_queries(self, dataProductNamespace:str):
         """Prepare all SPARQL queries needed to interpret the dataproduct description.
@@ -40,32 +41,52 @@ class Sidecar(ABC):
         Args:
             dataProductNamespace (str): The namespace within which the model of the dataproduct description is defined.
         """
-        self.INPUT_PORT_QUERY = prepareQuery("""
+        namespace_bindings = """
                 PREFIX dtp: <""" + dataProductNamespace + """> 
+                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>
+                PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        """
+        self.INPUT_PORT_QUERY = prepareQuery(namespace_bindings + """
                 SELECT DISTINCT ?inputPort
                 WHERE { 
                     ?inputPortClass rdfs:subClassOf* dtp:InputPort. 
                     ?inputPort rdf:type ?inputPortClass. 
                 }
             """)        
-        self.OUTPUT_PORT_QUERY = prepareQuery("""
-                PREFIX dtp: <""" + dataProductNamespace + """> 
+        self.OUTPUT_PORT_QUERY = prepareQuery(namespace_bindings + """
                 SELECT DISTINCT ?outputPort
                 WHERE { 
                     ?outputPortClass rdfs:subClassOf* dtp:OutputPort. 
-                    ?outputPort rdf:type ?outputPortClass. 
+                    ?outputPort rdf:type ?outputPortClass . 
                 }
-            """)       
-        self.FILE_INPUT_PORT_QUERY = prepareQuery("""
-                PREFIX dtp: <""" + dataProductNamespace + """> 
-                SELECT DISTINCT ?inputPort
+            """)                               
+        self.INSTANCE_OF_CLASS_QUERY = prepareQuery(namespace_bindings + """
+                SELECT DISTINCT ?instance
                 WHERE { 
-                    ?inputPort rdf:type dtp:FileInputPort. 
+                    ?instance rdf:type ?class. 
+                }
+            """)                                              
+        self.PROPERTIES_OF_INSTANCE_QUERY = prepareQuery(namespace_bindings + """
+                SELECT DISTINCT ?property ?value
+                WHERE { 
+                    ?instance ?property ?value .
                 }
             """)                                      
-        
-    def get_instances_of(self, class_iri:str):
-        pass
+
+    def get_instances_of_class(self, class_iri:str):
+        result = self.graph.query(self.INSTANCE_OF_CLASS_QUERY, initBindings = { 'class': URIRef(class_iri) })
+        instances = []
+        for row in result:
+            instances.append(row.instance)
+        return instances
+    
+    def get_properties_of_instance(self, instance_iri:str):
+        result = self.graph.query(self.PROPERTIES_OF_INSTANCE_QUERY, initBindings = { 'instance': URIRef(instance_iri) })
+        properties = {}
+        for row in result:
+            properties[row.property] = row.value
+        return properties        
         
     def get_input_ports(self):
         result = self.graph.query(self.INPUT_PORT_QUERY)
@@ -81,13 +102,6 @@ class Sidecar(ABC):
             outputPorts.append(row.outputPort)
         return outputPorts
     
-    def get_file_input_ports(self):
-        result = self.graph.query(self.FILE_INPUT_PORT_QUERY)
-        inputPorts = []
-        for row in result:
-            inputPorts.append(row.inputPort)
-        return inputPorts
-
     @abstractmethod
     def run(self):
         """Performs sidecar actions by interpreting relevant parts of the

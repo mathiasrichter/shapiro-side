@@ -67,12 +67,13 @@
 :FirstNamesInput a dtp:FileInputPort ;
   dcat:endpointURL  "file:///Users/mrichter/shapiro-side/test/" ; # where to look for the file
   dtp:namePattern  "FIRST\\_NAMES\\_[0..9]+\\.[Cc][Ss][Vv]" ; # what filename to look for
-  dtp:schedule    [
-    a time:GeneralDateTimeDescription ;
-      time:unitType  time:unitMinute ;
-      time:minutes  2;
-  ] ; # check every 2 minutes
+  dtp:schedule    :FirstNamesInputSchedule ;
   dtp:format     dtp:CSV ; # the file contains CSV data
+.
+
+:FirstNamesInputSchedule a time:GeneralDateTimeDescription ;
+  time:unitType  time:unitMinute ;
+  time:minutes  2;
 .
 
 :LastNamesInput a dtp:FileInputPort ;
