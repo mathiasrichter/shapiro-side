@@ -1,8 +1,9 @@
 from rdflib import Graph
 from rdflib.plugins.sparql import prepareQuery
-from rdflib import URIRef
+from rdflib import URIRef, BNode
 from abc import ABC, abstractmethod
 from pyspark.sql import SparkSession
+from urllib.parse import urlparse
 
 class Sidecar(ABC):
     """A Sidecar is the abstract superclass from which all sidecars descent.
@@ -46,25 +47,12 @@ class Sidecar(ABC):
                 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>
                 PREFIX owl: <http://www.w3.org/2002/07/owl#>
-        """
-        self.INPUT_PORT_QUERY = prepareQuery(namespace_bindings + """
-                SELECT DISTINCT ?inputPort
-                WHERE { 
-                    ?inputPortClass rdfs:subClassOf* dtp:InputPort. 
-                    ?inputPort rdf:type ?inputPortClass. 
-                }
-            """)        
-        self.OUTPUT_PORT_QUERY = prepareQuery(namespace_bindings + """
-                SELECT DISTINCT ?outputPort
-                WHERE { 
-                    ?outputPortClass rdfs:subClassOf* dtp:OutputPort. 
-                    ?outputPort rdf:type ?outputPortClass . 
-                }
-            """)                               
+        """                            
         self.INSTANCE_OF_CLASS_QUERY = prepareQuery(namespace_bindings + """
                 SELECT DISTINCT ?instance
                 WHERE { 
-                    ?instance rdf:type ?class. 
+                    ?instance rdf:type ?leafClass . 
+                    ?leafClass rdfs:subClassOf* ?class .
                 }
             """)                                              
         self.PROPERTIES_OF_INSTANCE_QUERY = prepareQuery(namespace_bindings + """
@@ -82,26 +70,17 @@ class Sidecar(ABC):
         return instances
     
     def get_properties_of_instance(self, instance_iri:str):
-        result = self.graph.query(self.PROPERTIES_OF_INSTANCE_QUERY, initBindings = { 'instance': URIRef(instance_iri) })
+        instance = None
+        if urlparse(instance_iri).scheme == '': # if there's no scheme it must be a plain node, not a uri reference
+            instance = BNode(instance_iri)
+        else:
+            instance = URIRef(instance_iri)
+        result = self.graph.query(self.PROPERTIES_OF_INSTANCE_QUERY, initBindings = { 'instance': instance })
         properties = {}
         for row in result:
             properties[row.property] = row.value
         return properties        
         
-    def get_input_ports(self):
-        result = self.graph.query(self.INPUT_PORT_QUERY)
-        inputPorts = []
-        for row in result:
-            inputPorts.append(row.inputPort)
-        return inputPorts
-    
-    def get_output_ports(self):
-        result = self.graph.query(self.OUTPUT_PORT_QUERY)
-        outputPorts = []
-        for row in result:
-            outputPorts.append(row.outputPort)
-        return outputPorts
-    
     @abstractmethod
     def run(self):
         """Performs sidecar actions by interpreting relevant parts of the
