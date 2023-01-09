@@ -16,6 +16,9 @@ class Sidecar(ABC):
     semantic model (available at the model IRI). 
     This class assumes a model as described at ./models/DataProduct.ttl"""
      
+    DATA_PRODUCT_ANCHOR = '/DataProduct#'
+    DATA_PRODUCT_SLASH = '/DataProduct/'
+     
     def __init__(self, model_iri:str, data_iri:str):
         """Initialize this sidecar.
 
@@ -31,7 +34,7 @@ class Sidecar(ABC):
         self.dptNamespace = None
         for n in self.graph.namespace_manager.namespaces():
             ns = str(n[1])
-            if ns.endswith("/DataProduct/") or ns.endswith("/DataProduct#"):
+            if ns.endswith(self.DATA_PRODUCT_ANCHOR) or ns.endswith(self.DATA_PRODUCT_SLASH):
                 self.dptNamespace = ns
         if self.dptNamespace is None:
             raise Exception("Could not identify namespace of model for DataProduct.")
@@ -118,6 +121,9 @@ class FileInputPortSidecar(SparkSidecar):
     FORMAT_PROP             = "/format"
     FORMAT_CSV              = "/CSV"
     FORMAT_JSON             = "/JSON"
+    UNIT_TYPE               = "https://www.w3.org/TR/owl-time/#unitType"
+    UNIT_MINUTE             = "https://www.w3.org/TR/owl-time/#minutes"
+    UNIT_SECOND             = "https://www.w3.org/TR/owl-time/#seconds"
     
     def __init__(self, model_iri:str, data_iri:str, port_iri:str, sparkSession:SparkSession):
         super().__init__(model_iri, data_iri, sparkSession)
@@ -162,12 +168,24 @@ class FileInputPortSidecar(SparkSidecar):
             raise Exception("No path/endpointURL specified in properties for file input port {}.".format(self.port_iri))                    
 
     def configure_schedule(self, properties:dict):
-        self.schedule = None
+        # currently assuming the general time description of the schedule represents a frequency
+        # in some time unit (ms,s,min,hour)
+        # TODO: find or create a more elaborate interpretation of schedule to express more complex
+        # schedules (e.g. on specific weekdays every 30 seconds, every month at the second Tuesday at 8 a.m., etc.)
+        self.schedule_unit = None
+        self.schedule_interval = None
         for p in properties:
-            if str(p) == (self.SCHEDULE_PROP):
-                pass
-        if self.schedule is None:
-            raise Exception("No schedule specified in properties for file input port {}.".format(self.port_iri))                    
+            if str(p).endswith(self.SCHEDULE_PROP):
+                sched_prop = self.get_properties_of_instance(str(properties[p]))
+                for sp in sched_prop:
+                    if str(sp) == self.UNIT_TYPE:
+                        self.schedule_unit = str(sched_prop[sp])
+                    if str(sp) == self.UNIT_SECOND:
+                        self.schedule_interval = float(sched_prop[sp]) # seconds
+                    elif str(sp) == self.UNIT_MINUTE:
+                        self.schedule_interval = 60 * float(sched_prop[sp]) # seconds
+        if self.schedule_unit is None or self.schedule_interval is None:
+            raise Exception("Schedule must be specified as time unit type minutes or seconds {}.".format(self.port_iri))                    
 
     def start(self):
         pass
