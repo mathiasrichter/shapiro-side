@@ -37,6 +37,32 @@
   ] ;
 .
 
+:FirstNameInputModel a rdfs:Class, sh:NodeShape ;
+  rdfs:label     "FirstNameInputModel"@en ;
+  rdfs:comment    "A model for first names being one input dataset."@en ;
+  skos:definition   "A model for first names being one input dataset."@en ;
+  dct:description   "A model for first names being one input dataset."@en ;
+  sh:Property     [
+    sh:path     :FirstName ;
+    sh:minCount   1 ;
+    sh:type     xsd:string ;
+    sh:minLength  1 ;
+  ] ;
+.
+
+:LastNameInputModel a rdfs:Class, sh:NodeShape ;
+  rdfs:label     "LasstNameInputModel"@en ;
+  rdfs:comment    "A model for last names being one input dataset."@en ;
+  skos:definition   "A model for last names being one input dataset."@en ;
+  dct:description   "A model for last names being one input dataset."@en ;
+  sh:Property     [
+    sh:path     :LastName ;
+    sh:minCount   1 ;
+    sh:type     xsd:string ;
+    sh:minLength  1 ;
+  ] ;
+.
+
 :FirstName a rdfs:Property ;
   rdfs:domain     :Greeting ;
   rdfs:range     xsd:string ;
@@ -66,9 +92,10 @@
 
 :FirstNamesInput a dtp:FileInputPort ;
   dcat:endpointURL  "file:///Users/mrichter/shapiro-side/test/" ; # where to look for the file
-  dtp:namePattern  "FIRST\\_NAMES\\_[0..9]+\\.[Cc][Ss][Vv]" ; # what filename to look for
+  dtp:namePattern  "FIRST_NAMES_[0-9]+.[Cc][Ss][Vv]" ; # what filename to look for
   dtp:schedule    :FirstNamesInputSchedule ;
   dtp:format     dtp:CSV ; # the file contains CSV data
+  dtp:hasDataModel :FirstNameInputModel ;
 .
 
 :FirstNamesInputSchedule a time:GeneralDateTimeDescription ;
@@ -78,11 +105,12 @@
 
 :LastNamesInput a dtp:FileInputPort ;
   dcat:endpointURL  "file:///Users/mrichter/shapiro-side/test/" ; # where to look for the file
-  dtp:namePattern  "LAST\\_NAMES\\_[0..9]+\\.[Cc][Ss][Vv]" ; # what filename to look for
+  dtp:namePattern  "LAST_NAMES_[0-9]+.[Cc][Ss][Vv]" ; # what filename to look for
   dtp:schedule    [
     a time:GeneralDateTimeDescription ;
       time:unitType  time:unitMinute ;
       time:minutes  2;
   ] ; # check every 2 minutes
   dtp:format     dtp:CSV ; # the file contains CSV data
+  dtp:hasDataModel :LastNameInputModel ;
 .

@@ -5,7 +5,33 @@ from abc import ABC, abstractmethod
 from pyspark.sql import SparkSession
 from urllib.parse import urlparse
 import re
+from threading import Thread, Event
+import os
+from datetime import datetime
 
+class SidecarThread(Thread):
+    """
+    Separate thread that does housekeeping on schemas. This is required
+    to keep the server in sync with the schemas when the server runs
+    for long times while schemas get added/removed in the file system.
+    """
+
+    def __init__(self, sleep_seconds, action):
+        Thread.__init__(self)
+        self.sleep_seconds = sleep_seconds
+        self.last_execution_time = None
+        self.stopped = Event()
+        self.action = action
+
+    def stop(self):
+        self.stopped.set()
+
+    def run(self):
+        while not self.stopped.is_set():
+            self.action()
+            self.stopped.wait(self.sleep_seconds)
+     
+     
 class Sidecar(ABC):
     """A Sidecar is the abstract superclass from which all sidecars descent.
     On this level, a sidecar takes the IRI of a semantic model defining the format for
@@ -18,6 +44,7 @@ class Sidecar(ABC):
      
     DATA_PRODUCT_ANCHOR = '/DataProduct#'
     DATA_PRODUCT_SLASH = '/DataProduct/'
+    NETLOC_SEP = '___'
      
     def __init__(self, model_iri:str, data_iri:str):
         """Initialize this sidecar.
@@ -83,7 +110,24 @@ class Sidecar(ABC):
         properties = {}
         for row in result:
             properties[row.property] = row.value
-        return properties        
+        return properties      
+    
+    def flatten(self, iri:str)->str:
+        url = urlparse(iri)
+        netloc = url.netloc
+        path = url.path
+        netloc = netloc.replace('.', '_')
+        path = path.replace('/', '_')
+        return netloc + self.NETLOC_SEP + path
+    
+    def unflatten(self, name:str)->str:
+        s = name.split(self.NETLOC_SEP)
+        if len(s) == 2:
+            netloc = s[0].replace('_', '.')
+            path = s[1].replace('_', '/')
+            return netloc+path
+        else:
+            raise Exception("Could not unflatten '{}' - unrecognized format".format(name))
         
     @abstractmethod
     def start(self):
@@ -109,12 +153,21 @@ class SparkSidecar(Sidecar):
     def __init__(self, model_iri:str, data_iri:str, sparkSession:SparkSession):
         super().__init__(model_iri, data_iri)
         self.sparkSession = sparkSession
-
+    
+    def log_distribution(self, title:str, issued:datetime, accessService:str, accessUrl:str, conformsTo:str):
+        entry = [{"http://www.w3.org/ns/dcat#title": title,
+               "http://www.w3.org/ns/dcat#issued": issued,
+               "http://www.w3.org/ns/dcat#accessService": accessService,
+               "http://www.w3.org/ns/dcat#accessUrl": accessUrl,
+               "http://www.w3.org/ns/dcat#conformsTo": conformsTo}]
+        df = self.sparkSession.DataFrame(entry)
+        df.write.mode("append").saveAsTable("http://www.w3.org/ns/dcat#Distribution")
 
 class FileInputPortSidecar(SparkSidecar):
     """This sidecar implementation operates the file-based input port as declared in the desciption under data_iri 
     and shares this data via a SparkSession within the architecture quantum of the data product declared under data_iri."""
     
+    MODEL_PROP              = "/hasDataModel"
     SCHEDULE_PROP           = "/schedule"
     PATH_PROP               = "http://www.w3.org/ns/dcat#endpointURL"   
     NAME_PATTERN_PROP       = "/namePattern"
@@ -132,10 +185,20 @@ class FileInputPortSidecar(SparkSidecar):
         
     def configure(self):
         props = self.get_properties_of_instance(self.port_iri)
+        self.configure_datamodel(props)
         self.configure_format(props)
         self.configure_name(props)
         self.configure_path(props)
         self.configure_schedule(props)
+        self.executor = SidecarThread(self.schedule_interval, self.check_for_file)
+        
+    def configure_datamodel(self, properties:dict):
+        self.datamodel = None
+        for p in properties:
+            if str(p).endswith(self.MODEL_PROP):
+                self.datamodel = str(properties[p])
+        if self.datamodel is None:
+            raise Exception("No datamodel specified in properties for file input port {}.".format(self.port_iri))        
     
     def configure_format(self, properties:dict):
         self.format = None
@@ -151,11 +214,11 @@ class FileInputPortSidecar(SparkSidecar):
             raise Exception("No format specified in properties for file input port {}.".format(self.port_iri))        
             
     def configure_name(self, properties:dict):
-        self.namePattern = None
+        self.name_pattern = None
         for p in properties:
             if str(p).endswith(self.NAME_PATTERN_PROP):
-                self.namePattern = str(properties[p])
-        if self.namePattern is None:
+                self.name_pattern = str(properties[p])
+        if self.name_pattern is None:
             raise Exception("No name pattern specified in properties for file input port {}.".format(self.port_iri))                    
 
     def configure_path(self, properties:dict):
@@ -169,9 +232,10 @@ class FileInputPortSidecar(SparkSidecar):
 
     def configure_schedule(self, properties:dict):
         # currently assuming the general time description of the schedule represents a frequency
-        # in some time unit (ms,s,min,hour)
-        # TODO: find or create a more elaborate interpretation of schedule to express more complex
+        # in some time unit (s,min)
+        # TODO: find or create a more elaborate implementation of schedule to express more complex
         # schedules (e.g. on specific weekdays every 30 seconds, every month at the second Tuesday at 8 a.m., etc.)
+        # based on owl-time
         self.schedule_unit = None
         self.schedule_interval = None
         for p in properties:
@@ -185,10 +249,25 @@ class FileInputPortSidecar(SparkSidecar):
                     elif str(sp) == self.UNIT_MINUTE:
                         self.schedule_interval = 60 * float(sched_prop[sp]) # seconds
         if self.schedule_unit is None or self.schedule_interval is None:
-            raise Exception("Schedule must be specified as time unit type minutes or seconds {}.".format(self.port_iri))                    
+            raise Exception("Schedule must be specified as time unit type minutes or seconds {}.".format(self.port_iri))
+        
+    def check_for_file(self):
+        print("checking")
+        for f in os.listdir(self.path):
+            if os.path.isfile( self.path + '/' + f ):
+                match = re.search(f, self.name_pattern)
+                if match is not None:
+                    self.process_file(f)
+                    
+    def process_file(self, file):
+        # read file
+        # quality check file
+        # save metadata in table representing this file as an instance of a distribution of the data set associated with the file input port
+        # save file data in table so it becomes accessible to the dataproduct inside the quantum
+        self.log_distribution(file, datetime.now(), self.port_iri, "file://" + self.path + '/' + file, self.datamodel )
 
     def start(self):
-        pass
+        self.executor.start()        
     
     def stop(self):
-        pass
+        self.executor.stop()
